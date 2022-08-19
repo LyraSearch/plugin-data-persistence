@@ -2,6 +2,7 @@ import { rmSync } from 'fs'
 import t from 'tap'
 import { create, insert, Lyra, search } from '@nearform/lyra'
 import { restore, persist } from '../../node-bun'
+import { UNSUPPORTED_FORMAT } from '../../common/errors'
 
 function generateTestDBInstance (): Lyra<any> {
   const db = create({
@@ -289,7 +290,7 @@ t.test('dpack persistence', t => {
 })
 
 t.test('errors', t => {
-  t.plan(1)
+  t.plan(2)
 
   t.test('should throw an error when trying to persist a database in an unsupported format', t => {
     t.plan(1)
@@ -300,6 +301,22 @@ t.test('errors', t => {
       persist(db, 'unsupported')
     } catch ({ message }) {
       t.match(message, 'Unsupported serialization format: unsupported')
+    }
+  })
+
+  t.test('should throw an error when trying to restore a database from an unsupported format', t => {
+    t.plan(1)
+
+    const format = 'unsupported'
+
+    const db = generateTestDBInstance()
+    const path = persist(db, 'binary', 'supported')
+    try {
+      // @ts-expect-error - 'unsupported' is not a supported format
+      restore(format, path)
+    } catch ({ message }) {
+      t.match(message, UNSUPPORTED_FORMAT(format))
+      rmSync(path)
     }
   })
 })
